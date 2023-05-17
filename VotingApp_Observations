@@ -1,0 +1,107 @@
+When Voter pod was deleted - K8 recreated another Voter pod because of the type Deployment mandated minimum one pod must be running. This is to ensure end customers dont use the voting access [GUI]
+
+When the Worker pod was deleted - K8 recreated another Voter pod because of the type Deployment mandated minimum one pod must be running. This is to ensure Worker always pull the data from REDIS and pushes it to DB. This way result shown in the GUI is accurate
+
+Before Pod  name - worker-dd46d7584-vlh6t
+After Pod name - worker-dd46d7584-s62m5
+
+After the DB pod was deleted - lost the connection to Voting and Result GUI - Error saying site cannot be reached - 54.255.190.25 refused to connect.
+On the Unix the new DB pod was created to maintaint the replicas:1 as per deplpoyment yaml file
+
+Observed Vote and Worker restart shows - 1. All containers were UP and RUNNING
+
+[root@ip-172-31-20-86 k8s-specifications]# kubectl get pod
+NAME                      READY   STATUS    RESTARTS   AGE
+db-b54cd94f4-cwcvx        1/1     Running   0          2m28s
+redis-868d64d78-txb5c     1/1     Running   0          9m4s
+result-5d57b59f4b-xn48w   1/1     Running   1          9m4s
+vote-94849dc97-8jbhr      1/1     Running   0          7m26s
+worker-dd46d7584-s62m5    1/1     Running   1          4m53s
+
+
+[root@ip-172-31-20-86 k8s-specifications]# kubectl get svc
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+db           ClusterIP   10.111.128.175   <none>        5432/TCP         10m
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP          11m
+redis        ClusterIP   10.108.192.185   <none>        6379/TCP         10m
+result       NodePort    10.108.27.138    <none>        5001:31001/TCP   10m
+vote         NodePort    10.98.223.4      <none>        5000:31000/TCP   10m
+[
+
+When Service was checked the nodeport was changed to 31001 and 31000
+
+So when we used the publi_ip:31001 and public_ip:31002 for Vote and Result - It worked fine !
+
+Previous data was lost..
+
+=============
+[root@ip-172-31-20-86 k8s-specifications]# kubectl get all
+NAME                          READY   STATUS        RESTARTS   AGE
+pod/db-b54cd94f4-b55vw        1/1     Running       0          5s
+pod/db-b54cd94f4-cwcvx        1/1     Terminating   0          17m
+pod/redis-868d64d78-txb5c     1/1     Running       0          24m
+pod/result-5d57b59f4b-xn48w   1/1     Running       1          24m
+pod/vote-94849dc97-rfmns      1/1     Running       0          9m35s
+pod/worker-dd46d7584-w54r4    1/1     Running       0          2m48s
+
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+service/db           ClusterIP   10.111.128.175   <none>        5432/TCP         24m
+service/kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP          25m
+service/redis        ClusterIP   10.108.192.185   <none>        6379/TCP         24m
+service/result       NodePort    10.108.27.138    <none>        5001:31001/TCP   24m
+service/vote         NodePort    10.98.223.4      <none>        5000:31000/TCP   24m
+
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/db       1/1     1            1           24m
+deployment.apps/redis    1/1     1            1           24m
+deployment.apps/result   1/1     1            1           24m
+deployment.apps/vote     1/1     1            1           24m
+deployment.apps/worker   1/1     1            1           24m
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/db-b54cd94f4        1         1         1       24m
+replicaset.apps/redis-868d64d78     1         1         1       24m
+replicaset.apps/result-5d57b59f4b   1         1         1       24m
+replicaset.apps/vote-94849dc97      1         1         1       24m
+replicaset.apps/worker-dd46d7584    1         1         1       24m
+===========
+Observed old DB POD is still in Terminating state
+
+Commands used during the assignment:
+
+  git clone  https://github.com/ashishrpandey/example-voting-app
+  cd example-voting-app/
+  cd k8s-specifications/
+  vi vote-service.yaml
+  vi result-service.yaml
+  kubectl apply -f .
+  kubectl get pod
+  kubectl delet --all all
+  kubectl delete --all all
+  kubectl get all
+  kubectl apply -f .
+  kubectl get pod
+  cat vote-service.yaml
+  cat vote-deployment.yaml
+  kubectl get pod
+  kubectl delete pod vote-94849dc97-49dmj
+  kubectl get pod
+  cat worker-deployment.yaml
+  kubectl get pod
+  kubectl delete worker-dd46d7584-vlh6t
+  kubectl delete pod worker-dd46d7584-vlh6t
+  kubectl get pod
+  cat db-deployment.yaml
+  cat db-service.yaml
+  kubectl get pod
+  kubectl delete pod db-b54cd94f4-cjdkb
+  kubectl get pod
+  kubectl describe pod db-b54cd94f4-cwcvx
+  kubectl get pod
+  kubectl get svc
+  kubectl logs db-b54cd94f4-cwcvx
+
+
+
+
+
